@@ -4,42 +4,61 @@
   <meta charset="UTF-8">
   <title>離線電腦考試系統</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    #top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    body { font-family: Arial, sans-serif; margin: 80px 20px 20px; }
+    #top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      padding: 10px 20px;
+      font-size: 1em;
+      z-index: 1000;
+    }
+    #left-bar { flex: 1; text-align: left; }
+    #center-bar { flex: 2; text-align: center; }
     #question-box { border: 1px solid #ccc; padding: 20px; }
     .option { margin: 10px 0; }
     #note { margin-top: 10px; color: red; }
+    #starDisplay { margin-bottom: 10px; font-size: 1.5em; color: gold; }
   </style>
 </head>
 <body>
   <div id="top-bar">
-    <div>
+    <div id="left-bar">
       題庫匯入：<input type="file" id="fileInput" />
     </div>
-    <div>
+    <div id="center-bar">
       時間：<span id="timer">00:00</span>
       <button onclick="prevQuestion()">上一題</button>
       <button onclick="nextQuestion()">下一題</button>
       <button onclick="endExam()">結束作答</button>
     </div>
   </div>
+
   <div id="question-box">
+    <div id="starDisplay"></div>
     <div id="questionText">請匯入題庫開始測驗</div>
     <div id="options"></div>
     <div id="note"></div>
   </div>
+
   <script>
     let questions = [], current = 0, startTime, interval;
-    let answers = [], score = 0;
+    let answers = [], score = 0, originalData = [];
 
     document.getElementById('fileInput').addEventListener('change', function(evt) {
       const reader = new FileReader();
       reader.onload = function(e) {
-        const fullList = JSON.parse(e.target.result);
-        const tf = fullList.filter(q => q.type === "是非題");
-        const mc = fullList.filter(q => q.type === "選擇題");
+        originalData = JSON.parse(e.target.result);
+        const tf = originalData.filter(q => q.type === "是非題");
+        const mc = originalData.filter(q => q.type === "選擇題");
         const pick = [...tf.sort(() => 0.5 - Math.random()).slice(0,3),
                       ...mc.sort(() => 0.5 - Math.random()).slice(0,3)];
+        pick.forEach(q => { if (q.star === undefined) q.star = 0; });
         questions = pick;
         answers = new Array(questions.length).fill(null);
         startTime = new Date();
@@ -74,24 +93,34 @@
         });
       } else {
         q.options.forEach((text, idx) => {
-          const letter = String.fromCharCode(65 + idx);
+          const label = (idx + 1).toString();
           const div = document.createElement('div');
           div.className = 'option';
-          div.innerHTML = `<label><input type="radio" name="opt" value="${letter}" onchange="selectAnswer('${letter}')"> ${letter}. ${text}</label>`;
+          div.innerHTML = `<label><input type="radio" name="opt" value="${label}" onchange="selectAnswer('${label}')"> ${label}. ${text}</label>`;
           optionsDiv.appendChild(div);
         });
       }
+      renderStars(q.star);
+    }
+
+    function renderStars(count) {
+      const starContainer = document.getElementById('starDisplay');
+      starContainer.innerHTML = count > 0 ? '⭐️'.repeat(Math.min(10, count)) : '';
     }
 
     function selectAnswer(ans) {
       const q = questions[current];
       answers[current] = ans;
-      if (ans !== q.answer) {
+      const correct = ans === q.answer;
+      if (!correct) {
         document.getElementById('note').textContent = `正確答案：${q.answer}，說明：${q.note}`;
         if (q.type === "是非題") score -= 1;
+        q.star = 0;
       } else {
         if (q.type === "是非題" || q.type === "選擇題") score += 1;
+        q.star = Math.min(10, q.star + 1);
       }
+      renderStars(q.star);
     }
 
     function prevQuestion() {
@@ -105,9 +134,29 @@
     function endExam() {
       clearInterval(interval);
       const total = questions.length;
-      const correct = answers.filter((ans, i) => ans === questions[i].answer).length;
-      const blank = answers.filter(ans => ans === null).length;
-      alert(`作答結束！正確率：${(correct / total * 100).toFixed(2)}%，得分：${score}分，未作答：${blank}題`);
+      const answered = answers.filter(ans => ans !== null).length;
+      const blank = total - answered;
+      const correct = answers.filter((ans, i) => ans !== null && ans === questions[i].answer).length;
+      const accuracy = answered > 0 ? (correct / answered * 100).toFixed(2) : '0.00';
+
+      const summary = `作答結束！\n總題數：${total} 題\n已答題數：${answered} 題\n未作答：${blank} 題\n正確率（已答題）：${accuracy}%\n得分：${score} 分`;
+      if (confirm(`${summary}\n\n是否要儲存作答後的題庫？`)) {
+        questions.forEach(updatedQ => {
+          const index = originalData.findIndex(q => q.question === updatedQ.question);
+          if (index !== -1) {
+            originalData[index].star = updatedQ.star;
+          }
+        });
+
+        const blob = new Blob([JSON.stringify(originalData, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "updated_questions.json";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
     }
   </script>
 </body>
