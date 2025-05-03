@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>離線電腦考試系統</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 80px 20px 20px; }
+    body { font-family: Arial, sans-serif; margin: 120px 20px 20px; }
     #top-bar {
       display: flex;
       justify-content: space-between;
@@ -18,23 +18,42 @@
       font-size: 1em;
       z-index: 1000;
     }
-    #left-bar { flex: 1; text-align: left; }
-    #center-bar { flex: 2; text-align: center; }
-    #question-box { border: 1px solid #ccc; padding: 20px; }
+    #left-bar { flex: 2; text-align: left; }
+    #center-bar { flex: 3; text-align: center; }
+    #question-box { border: 1px solid #ccc; padding: 20px; margin-top: 20px; }
     .option { margin: 10px 0; }
     #note { margin-top: 10px; color: red; }
     #starDisplay { margin-bottom: 10px; font-size: 1.5em; color: gold; }
+    #nav-buttons { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
   </style>
 </head>
 <body>
   <div id="top-bar">
     <div id="left-bar">
       題庫匯入：<input type="file" id="fileInput" />
+      考題年份：
+      <select id="yearSelect">
+        <option value="113">113</option>
+        <option value="112" selected>112</option>
+        <option value="111">111</option>
+        <option value="110">110</option>
+        <option value="109">109</option>
+        <option value="108">108</option>
+      </select>
+      出題順序：
+      <select id="orderMode">
+        <option value="sequential" selected>依序</option>
+        <option value="random">隨機</option>
+      </select>
+      題型優先：
+      <select id="typePriority">
+        <option value="是非題" selected>是非</option>
+        <option value="選擇題">選擇</option>
+      </select>
     </div>
     <div id="center-bar">
+      <span id="summaryBar">總題數：0 已作答：0 未作答：0</span>
       時間：<span id="timer">00:00</span>
-      <button onclick="prevQuestion()">上一題</button>
-      <button onclick="nextQuestion()">下一題</button>
       <button onclick="endExam()">結束作答</button>
     </div>
   </div>
@@ -44,6 +63,18 @@
     <div id="questionText">請匯入題庫開始測驗</div>
     <div id="options"></div>
     <div id="note"></div>
+    <div id="nav-buttons">
+ 
+      <button onclick="goToFirst()">第一題</button>
+      <button onclick="prevPage()">上一頁</button>
+      <button onclick="nextPage()">下一頁</button>
+      <button onclick="goToLast()">最後一題</button>
+   
+    </div>
+ <div id="nav-buttons">
+  <button onclick="prevQuestion()">上一題</button>
+      <button onclick="nextQuestion()">下一題</button>
+ </div>
   </div>
 
   <script>
@@ -54,19 +85,48 @@
       const reader = new FileReader();
       reader.onload = function(e) {
         originalData = JSON.parse(e.target.result);
-        const tf = originalData.filter(q => q.type === "是非題");
-        const mc = originalData.filter(q => q.type === "選擇題");
-        const pick = [...tf.sort(() => 0.5 - Math.random()).slice(0,3),
-                      ...mc.sort(() => 0.5 - Math.random()).slice(0,3)];
-        pick.forEach(q => { if (q.star === undefined) q.star = 0; });
-        questions = pick;
-        answers = new Array(questions.length).fill(null);
+        updateQuestions();
         startTime = new Date();
+        clearInterval(interval);
         interval = setInterval(updateTimer, 1000);
-        showQuestion();
       };
       reader.readAsText(evt.target.files[0]);
     });
+
+    document.getElementById('yearSelect').addEventListener('change', updateQuestions);
+    document.getElementById('orderMode').addEventListener('change', updateQuestions);
+    document.getElementById('typePriority').addEventListener('change', updateQuestions);
+
+    function updateQuestions() {
+      const year = document.getElementById('yearSelect').value;
+      const orderMode = document.getElementById('orderMode').value;
+      const typePriority = document.getElementById('typePriority').value;
+
+      let filtered = originalData.filter(q => q.year == year);
+      let tf = filtered.filter(q => q.type === "是非題");
+      let mc = filtered.filter(q => q.type === "選擇題");
+
+      const groupByNote = (arr) => {
+        const grouped = {};
+        arr.forEach(q => {
+          const note = q.note || "";
+          if (!grouped[note]) grouped[note] = [];
+          grouped[note].push(q);
+        });
+        return Object.values(grouped).flatMap(group => orderMode === 'random' ? group.sort(() => 0.5 - Math.random()) : group);
+      };
+
+      tf = groupByNote(tf);
+      mc = groupByNote(mc);
+
+      questions = (typePriority === '是非題') ? [...tf, ...mc] : [...mc, ...tf];
+      questions.forEach(q => { if (q.star === undefined) q.star = 0; });
+      answers = new Array(questions.length).fill(null);
+      current = 0;
+      score = 0;
+      showQuestion();
+      updateTimer();
+    }
 
     function updateTimer() {
       const now = new Date();
@@ -74,6 +134,11 @@
       const min = String(Math.floor(diff / 60)).padStart(2, '0');
       const sec = String(diff % 60).padStart(2, '0');
       document.getElementById('timer').textContent = `${min}:${sec}`;
+
+      const total = questions.length;
+      const answered = answers.filter(a => a !== null).length;
+      const blank = total - answered;
+      document.getElementById('summaryBar').textContent = `總題數：${total} 已作答：${answered} 未作答：${blank}`;
     }
 
     function showQuestion() {
@@ -84,20 +149,22 @@
       optionsDiv.innerHTML = "";
       document.getElementById('note').textContent = "";
 
+      const selected = answers[current];
+      const renderOption = (value, label) => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        const checked = selected === value ? 'checked' : '';
+        div.innerHTML = `<label><input type="radio" name="opt" value="${value}" onchange="selectAnswer('${value}')" ${checked}> ${label}</label>`;
+        optionsDiv.appendChild(div);
+      };
+
       if (q.type === "是非題") {
-        ['T', 'F'].forEach(opt => {
-          const div = document.createElement('div');
-          div.className = 'option';
-          div.innerHTML = `<label><input type="radio" name="opt" value="${opt}" onchange="selectAnswer('${opt}')"> ${opt === 'T' ? '是' : '否'}</label>`;
-          optionsDiv.appendChild(div);
-        });
+        renderOption('O', '是');
+        renderOption('X', '否');
       } else {
         q.options.forEach((text, idx) => {
           const label = (idx + 1).toString();
-          const div = document.createElement('div');
-          div.className = 'option';
-          div.innerHTML = `<label><input type="radio" name="opt" value="${label}" onchange="selectAnswer('${label}')"> ${label}. ${text}</label>`;
-          optionsDiv.appendChild(div);
+          renderOption(label, `${label}. ${text}`);
         });
       }
       renderStars(q.star);
@@ -111,35 +178,39 @@
     function selectAnswer(ans) {
       const q = questions[current];
       answers[current] = ans;
-      const correct = ans === q.answer;
+      const correct = q.note === "凡作答一律給分" || ans === q.answer;
       if (!correct) {
         document.getElementById('note').textContent = `正確答案：${q.answer}，說明：${q.note}`;
         if (q.type === "是非題") score -= 1;
         q.star = 0;
       } else {
-        if (q.type === "是非題" || q.type === "選擇題") score += 1;
+        score += 1;
         q.star = Math.min(10, q.star + 1);
       }
       renderStars(q.star);
     }
 
-    function prevQuestion() {
-      if (current > 0) { current--; showQuestion(); }
-    }
-
-    function nextQuestion() {
-      if (current < questions.length - 1) { current++; showQuestion(); }
-    }
+    function prevQuestion() { if (current > 0) { current--; showQuestion(); } }
+    function nextQuestion() { if (current < questions.length - 1) { current++; showQuestion(); } }
+    function goToFirst() { current = 0; showQuestion(); }
+    function goToLast() { current = questions.length - 1; showQuestion(); }
+    function prevPage() { current = Math.max(0, current - 10); showQuestion(); }
+    function nextPage() { current = Math.min(questions.length - 1, current + 10); showQuestion(); }
 
     function endExam() {
       clearInterval(interval);
       const total = questions.length;
       const answered = answers.filter(ans => ans !== null).length;
       const blank = total - answered;
-      const correct = answers.filter((ans, i) => ans !== null && ans === questions[i].answer).length;
+      let correct = 0;
+      for (let i = 0; i < questions.length; i++) {
+        if (answers[i] !== null && (questions[i].note === "凡作答一律給分" || answers[i] === questions[i].answer)) {
+          correct++;
+        }
+      }
       const accuracy = answered > 0 ? (correct / answered * 100).toFixed(2) : '0.00';
+      const summary = `作答結束！\n總題數：${total} 題\n已答題數：${answered} 題\n未作答：${blank} 題\n正確：${correct} 題\n錯誤：${answered - correct} 題\n正確率（已答題）：${accuracy}%\n得分：${score} 分`;
 
-      const summary = `作答結束！\n總題數：${total} 題\n已答題數：${answered} 題\n未作答：${blank} 題\n正確率（已答題）：${accuracy}%\n得分：${score} 分`;
       if (confirm(`${summary}\n\n是否要儲存作答後的題庫？`)) {
         questions.forEach(updatedQ => {
           const index = originalData.findIndex(q => q.question === updatedQ.question);
@@ -147,7 +218,6 @@
             originalData[index].star = updatedQ.star;
           }
         });
-
         const blob = new Blob([JSON.stringify(originalData, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
