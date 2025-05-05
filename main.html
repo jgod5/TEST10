@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>離線電腦考試系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     body { font-family: Arial, sans-serif; margin: 120px 20px 20px; }
     #top-bar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
       position: fixed;
@@ -18,13 +20,21 @@
       font-size: 1em;
       z-index: 1000;
     }
-    #left-bar { flex: 2; text-align: left; }
-    #center-bar { flex: 3; text-align: center; }
+    #left-bar, #center-bar {
+      flex: 100%;
+      text-align: left;
+      margin: 5px 0;
+    }
+    @media (min-width: 600px) {
+      #left-bar { flex: 2; text-align: left; }
+      #center-bar { flex: 3; text-align: center; }
+    }
     #question-box { border: 1px solid #ccc; padding: 20px; margin-top: 20px; }
     .option { margin: 10px 0; }
     #note { margin-top: 10px; color: red; }
     #starDisplay { margin-bottom: 10px; font-size: 1.5em; color: gold; }
     #nav-buttons { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    #proficiency { color: goldenrod; margin-right: 20px; }
   </style>
 </head>
 <body>
@@ -33,8 +43,9 @@
       題庫匯入：<input type="file" id="fileInput" />
       考題年份：
       <select id="yearSelect">
-        <option value="113">113</option>
-        <option value="112" selected>112</option>
+        <option value="ALL" selected>ALL</option>
+	<option value="113">113</option>
+        <option value="112">112</option>
         <option value="111">111</option>
         <option value="110">110</option>
         <option value="109">109</option>
@@ -52,6 +63,7 @@
       </select>
     </div>
     <div id="center-bar">
+      <span id="proficiency">熟練度：0%</span>
       <span id="summaryBar">總題數：0 已作答：0 未作答：0</span>
       時間：<span id="timer">00:00</span>
       <button onclick="endExam()">結束作答</button>
@@ -64,24 +76,22 @@
     <div id="options"></div>
     <div id="note"></div>
     <div id="nav-buttons">
- 
+      <button onclick="prevQuestion()">上一題</button>
+      <button onclick="nextQuestion()">下一題</button>
       <button onclick="goToFirst()">第一題</button>
       <button onclick="prevPage()">上一頁</button>
       <button onclick="nextPage()">下一頁</button>
       <button onclick="goToLast()">最後一題</button>
-   
     </div>
- <div id="nav-buttons">
-  <button onclick="prevQuestion()">上一題</button>
-      <button onclick="nextQuestion()">下一題</button>
- </div>
   </div>
 
   <script>
     let questions = [], current = 0, startTime, interval;
-    let answers = [], score = 0, originalData = [];
+    let answers = [], score = 0, originalData = [], filename = "";
 
     document.getElementById('fileInput').addEventListener('change', function(evt) {
+      const file = evt.target.files[0];
+      filename = file.name.split('.')[0];
       const reader = new FileReader();
       reader.onload = function(e) {
         originalData = JSON.parse(e.target.result);
@@ -90,7 +100,7 @@
         clearInterval(interval);
         interval = setInterval(updateTimer, 1000);
       };
-      reader.readAsText(evt.target.files[0]);
+      reader.readAsText(file);
     });
 
     document.getElementById('yearSelect').addEventListener('change', updateQuestions);
@@ -102,7 +112,7 @@
       const orderMode = document.getElementById('orderMode').value;
       const typePriority = document.getElementById('typePriority').value;
 
-      let filtered = originalData.filter(q => q.year == year);
+      let filtered = (year === "ALL") ? originalData : originalData.filter(q => q.year == year);
       let tf = filtered.filter(q => q.type === "是非題");
       let mc = filtered.filter(q => q.type === "選擇題");
 
@@ -139,6 +149,10 @@
       const answered = answers.filter(a => a !== null).length;
       const blank = total - answered;
       document.getElementById('summaryBar').textContent = `總題數：${total} 已作答：${answered} 未作答：${blank}`;
+
+      const starSum = questions.reduce((sum, q) => sum + (q.star || 0), 0);
+      const proficiency = total > 0 ? Math.round(starSum / total) * 10 : 0;
+      document.getElementById('proficiency').textContent = `熟練度：${proficiency}%`;
     }
 
     function showQuestion() {
@@ -203,9 +217,16 @@
       const answered = answers.filter(ans => ans !== null).length;
       const blank = total - answered;
       let correct = 0;
+      score = 0;
       for (let i = 0; i < questions.length; i++) {
-        if (answers[i] !== null && (questions[i].note === "凡作答一律給分" || answers[i] === questions[i].answer)) {
+        const q = questions[i];
+        const ans = answers[i];
+        const isCorrect = ans !== null && (q.note === "凡作答一律給分" || ans === q.answer);
+        if (isCorrect) {
           correct++;
+          score++;
+        } else if (ans !== null && q.type === "是非題") {
+          score--;
         }
       }
       const accuracy = answered > 0 ? (correct / answered * 100).toFixed(2) : '0.00';
@@ -221,8 +242,10 @@
         const blob = new Blob([JSON.stringify(originalData, null, 2)], { type: "application/json" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
+        const now = new Date();
+        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
         a.href = url;
-        a.download = "updated_questions.json";
+        a.download = `${filename}_${dateStr}.json`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
