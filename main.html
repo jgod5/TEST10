@@ -41,7 +41,7 @@
   <div id="top-bar">
  
     <div id="left-bar">
-      V21 題庫匯入：<input type="file" id="fileInput" />
+      V22 題庫匯入：<input type="file" id="fileInput" />
       考題年份：
       <select id="yearSelect">
         <option value="ALL" selected>ALL</option>
@@ -119,14 +119,17 @@
       let mc = filtered.filter(q => q.type === "選擇題");
 
       const groupByNote = (arr) => {
-        const grouped = {};
-        arr.forEach(q => {
-          const note = q.note || "";
-          if (!grouped[note]) grouped[note] = [];
-          grouped[note].push(q);
-        });
-        return Object.values(grouped).flatMap(group => orderMode === 'random' ? group.sort(() => 0.5 - Math.random()) : group);
-      };
+  if (orderMode === 'random') {
+    return arr.sort(() => 0.5 - Math.random());
+  } else {
+    return arr.sort((a, b) => {
+      const keyA = `${a.year.toString().padStart(3, '0')}${a.id.toString().padStart(3, '0')}`;
+      const keyB = `${b.year.toString().padStart(3, '0')}${b.id.toString().padStart(3, '0')}`;
+      return keyA.localeCompare(keyB);
+    });
+  }
+};
+
 
       tf = groupByNote(tf);
       mc = groupByNote(mc);
