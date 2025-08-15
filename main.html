@@ -41,12 +41,12 @@
   <div id="top-bar">
  
     <div id="left-bar">
-      V31 題庫匯入：<input type="file" id="fileInput" />
+      V33 題庫匯入：<input type="file" id="fileInput" />
       考題年份：
       <select id="yearSelect">
         <option value="ALL" selected>ALL</option>
-		<option value="114">114</option>
-	    <option value="113">113</option>
+        <option value="114">114</option>
+	<option value="113">113</option>
         <option value="112">112</option>
         <option value="111">111</option>
         <option value="110">110</option>
@@ -194,7 +194,23 @@
 
     function renderStars(count) {
       const starContainer = document.getElementById('starDisplay');
-      starContainer.innerHTML = count > 0 ? '⭐️'.repeat(Math.min(10, count)) : '';
+      if (count > 0) {
+ 	if (count === 10)  {
+      	   starContainer.innerHTML = count > 0 ? '❤️ '.repeat(Math.min(10, count)) : '';
+      	   starContainer.style.color = 'red';
+        }
+	else 
+        {
+            starContainer.innerHTML = '⭐️'.repeat(Math.min(10, count));
+            starContainer.style.color = 'gold';
+	   //starContainer.innerHTML = count = 10 ? '⭐️'.repeat(Math.min(1, count)) : '⭐️'.repeat(Math.min(1, count));
+	}
+      }
+      else {
+	   starContainer.innerHTML = '';
+      } 
+	
+
     }
 
     function selectAnswer(ans) {
@@ -263,5 +279,3 @@
   </script>
 </body>
 </html>
-
-
