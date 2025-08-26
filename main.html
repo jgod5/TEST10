@@ -45,6 +45,7 @@
       考題年份：
       <select id="yearSelect">
         <option value="ALL" selected>ALL</option>
+        <option value="115-C">115-C</option>
         <option value="114">114</option>
 	<option value="113">113</option>
         <option value="112">112</option>
@@ -91,6 +92,7 @@
   <script>
     let questions = [], current = 0, startTime, interval;
     let answers = [], score = 0, originalData = [], filename = "";
+    
 
     document.getElementById('fileInput').addEventListener('change', function(evt) {
       const file = evt.target.files[0];
@@ -111,7 +113,7 @@
     document.getElementById('typePriority').addEventListener('change', updateQuestions);
 
     function updateQuestions() {
-      const year = document.getElementById('yearSelect').value;
+      const year = document.getElementById('yearSelect').value; //1140826
       const orderMode = document.getElementById('orderMode').value;
       const typePriority = document.getElementById('typePriority').value;
 
@@ -196,7 +198,7 @@
       const starContainer = document.getElementById('starDisplay');
       if (count > 0) {
  	if (count === 10)  {
-      	   starContainer.innerHTML = count > 0 ? '❤️ '.repeat(Math.min(10, count)) : '';
+      	   starContainer.innerHTML = count > 0 ? '❤️ '.repeat(Math.min(1, count)) : ''; //1140828
       	   starContainer.style.color = 'red';
         }
 	else 
