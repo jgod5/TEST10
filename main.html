@@ -41,7 +41,7 @@
   <div id="top-bar">
  
     <div id="left-bar">
-      V34 題庫匯入：<input type="file" id="fileInput" />
+      V35 題庫匯入：<input type="file" id="fileInput" />
       考題年份：
       <select id="yearSelect">
         <option value="ALL" selected>ALL</option>
@@ -172,6 +172,9 @@
       const optionsDiv = document.getElementById('options');
       optionsDiv.innerHTML = "";
       document.getElementById('note').textContent = "";
+      //20250828
+	  //alert('q.point');
+	  //alert (q.point);
 
       const selected = answers[current];
       const renderOption = (value, label) => {
@@ -219,13 +222,32 @@
       const q = questions[current];
       answers[current] = ans;
       const correct = q.note === "凡作答一律給分" || ans === q.answer;
+	  
+	  //20250828 -->
+	  let point;
+	  if (q.point===undefined) 
+	  {
+		  point = 1;		  
+          //alert(point);
+	  }
+	  else
+	  { 
+		 point = q.point;
+         //alert(point);
+
+	  }
+	  //20250828 <--
+
       if (!correct) {
         document.getElementById('note').textContent = `正確答案：${q.answer}，說明：${q.note}`;
-        if (q.type === "是非題") score -= 1;
+        //if (q.type === "是非題") score -= 1;
+		if (q.type === "是非題") score -= point; //20250828
         q.star = 0;
       } else {
-        score += 1;
-        q.star = Math.min(10, q.star + 1);
+        //score += 1;
+        //q.star = Math.min(10, q.star + 1);
+		score += point; //20250828
+        q.star = Math.min(10, q.star + point); //20250828
       }
       renderStars(q.star);
     }
@@ -237,7 +259,8 @@
     function prevPage() { current = Math.max(0, current - 10); showQuestion(); }
     function nextPage() { current = Math.min(questions.length - 1, current + 10); showQuestion(); }
 
-    function endExam() {
+    //
+    function endExam() { 
       clearInterval(interval);
       const total = questions.length;
       const answered = answers.filter(ans => ans !== null).length;
@@ -247,12 +270,25 @@
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         const ans = answers[i];
+ 
+       let point; //20250828
+	   if (q.point===undefined) 
+	   {
+		  point = 1;	         
+	   }
+	   else
+	   {
+		    point = q.point;
+		}
+
         const isCorrect = ans !== null && (q.note === "凡作答一律給分" || ans === q.answer);
         if (isCorrect) {
           correct++;
-          score++;
+          //score++;
+		  score = score + point; //20250828
         } else if (ans !== null && q.type === "是非題") {
-          score--;
+          //score--;
+		  score = score - point; //20250828
         }
       }
       const accuracy = answered > 0 ? (correct / answered * 100).toFixed(2) : '0.00';
@@ -281,4 +317,3 @@
   </script>
 </body>
 </html>
-
