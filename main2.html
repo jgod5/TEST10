@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>臺灣銀行考試系統</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0f1117;--surf:#1a1d27;--surf2:#22263a;--bdr:#2e3352;
+  --acc:#4f9eff;--acc2:#7c6dfa;--gold:#f5c842;
+  --red:#ff5c5c;--green:#4cdf88;--text:#e4e8f5;--muted:#7a82a8;--r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Noto Sans TC",sans-serif;background:var(--bg);color:var(--text);padding-top:116px;}
+#bar{position:fixed;top:0;left:0;right:0;background:rgba(15,17,23,.97);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--bdr);
+  z-index:99;padding:6px 12px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+.bg{display:flex;gap:4px;align-items:center;}
+.bg label{color:var(--muted);font-size:.75em;white-space:nowrap;}
+select,button{background:var(--surf2);border:1px solid var(--bdr);color:var(--text);
+  padding:3px 7px;border-radius:6px;font-family:inherit;font-size:.78em;cursor:pointer;}
+select:hover,button:hover{border-color:var(--acc);}
+#sb{margin-left:auto;display:flex;gap:7px;align-items:center;flex-wrap:wrap;}
+.sp{background:var(--surf2);border:1px solid var(--bdr);border-radius:20px;
+  padding:2px 9px;font-size:.75em;font-family:"JetBrains Mono",monospace;}
+#prof{color:var(--gold);}#clk{color:var(--acc);}
+#endb{background:linear-gradient(135deg,#f44,#c22);border:none;color:#fff;font-weight:700;padding:4px 11px;}
+#main{max-width:860px;margin:0 auto;padding:12px 12px 40px;}
+#pw{background:var(--surf2);border:1px solid var(--bdr);border-radius:var(--r);padding:9px 13px;margin-bottom:11px;}
+#pl{display:flex;justify-content:space-between;font-size:.75em;color:var(--muted);margin-bottom:4px;align-items:center;}
+#pt{background:var(--bdr);border-radius:4px;height:5px;overflow:hidden;}
+#pf{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:4px;transition:width .3s;}
+#jw{display:flex;align-items:center;gap:4px;}
+#ji{width:52px;background:var(--surf2);border:1px solid var(--bdr);color:var(--text);padding:2px 5px;border-radius:5px;font-size:.78em;text-align:center;}
+#qbox{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:20px;margin-bottom:11px;}
+#qh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:11px;}
+#badge{font-family:"JetBrains Mono",monospace;font-size:.7em;color:var(--muted);background:var(--surf2);border:1px solid var(--bdr);border-radius:4px;padding:1px 7px;}
+#stars{font-size:1em;min-height:1.2em;}
+#qt{font-size:1em;line-height:1.8;margin-bottom:14px;}
+.opt{margin:6px 0;padding:9px 13px;border:1px solid var(--bdr);border-radius:8px;background:var(--surf2);cursor:pointer;display:flex;align-items:center;gap:9px;transition:border-color .13s,background .13s;}
+.opt:hover{border-color:var(--acc2);background:#252840;}
+.opt.sel{border-color:var(--acc);background:#192040;}
+.opt.ok{border-color:var(--green);background:#0d2918;}
+.opt.no{border-color:var(--red);background:#280d0d;}
+.opt input{accent-color:var(--acc);width:14px;height:14px;flex-shrink:0;}
+.opt label{cursor:pointer;line-height:1.5;font-size:.92em;}
+#note{margin-top:10px;padding:8px 12px;border-radius:8px;background:#291a0d;border:1px solid #5a3a18;color:#ffbb66;font-size:.86em;line-height:1.6;}
+#note:empty{display:none;}
+#nav{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:11px;}
+#nav button{padding:6px 14px;border-radius:8px;font-weight:500;}
+#nav button.p{background:linear-gradient(135deg,var(--acc),var(--acc2));border:none;color:#fff;}
+/* toast */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);
+  background:#1e2a1e;border:1px solid var(--green);color:var(--green);
+  padding:10px 20px;border-radius:10px;font-size:.85em;opacity:0;
+  transition:opacity .3s,transform .3s;pointer-events:none;z-index:9999;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+/* modal */
+#mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.76);z-index:999;align-items:center;justify-content:center;}
+#mo.show{display:flex;}
+#mb{background:var(--surf);border:1px solid var(--bdr);border-radius:16px;padding:26px;max-width:460px;width:92%;text-align:center;}
+#mb h2{color:var(--gold);font-size:1.2em;margin-bottom:15px;}
+.rr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdr);font-size:.88em;}
+.rv{color:var(--acc);font-family:"JetBrains Mono",monospace;font-weight:600;}
+#ma{margin-top:15px;display:flex;gap:9px;justify-content:center;flex-wrap:wrap;}
+#ma button{padding:8px 16px;border-radius:8px;}
+#saveb{background:var(--green);border:none;color:#0a2916;font-weight:700;}
+#exportb{background:var(--surf2);}
+/* guide */
+#guide{background:var(--surf);border:1px solid var(--bdr);border-radius:var(--r);padding:14px;margin-bottom:11px;font-size:.8em;line-height:1.7;color:var(--muted);}
+#guide h3{color:var(--acc);margin-bottom:6px;font-size:.88em;}
+#guide code{background:var(--surf2);padding:1px 5px;border-radius:3px;color:#adf;font-family:"JetBrains Mono",monospace;font-size:.88em;}
+#guide-toggle{background:none;border:1px solid var(--bdr);color:var(--muted);font-size:.72em;padding:2px 8px;border-radius:5px;cursor:pointer;}
+#guide-toggle:hover{border-color:var(--acc);color:var(--acc);}
+#guide-body{display:none;margin-top:8px;}
+/* storage info bar */
+#storebar{background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;
+  padding:6px 12px;margin-bottom:11px;font-size:.75em;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;}
+#storebar span b{color:var(--text);}
+.smbtn{font-size:.72em;padding:2px 8px;border-radius:5px;}
+.smbtn.danger{border-color:#f44;color:#f44;}
+.smbtn.danger:hover{background:#2a0a0a;}
+@media(max-width:600px){body{padding-top:162px;}#qt{font-size:.95em;}}
+</style>
+</head>
+<body>
+
+<div id="bar">
+  <div class="bg"><label>科目</label><select id="subj">
+    <option value="ALL">全部</option>
+    <option value="會計">會計</option>
+    <option value="金融常識">金融常識</option>
+    <option value="存匯">存匯</option>
+    <option value="資訊">資訊</option>
+  </select></div>
+  <div class="bg"><label>年份</label><select id="yr">
+    <option value="ALL">全部</option>
+    <option value="114">114</option><option value="113">113</option>
+    <option value="112">112</option><option value="111">111</option>
+    <option value="110">110</option><option value="109">109</option>
+    <option value="108">108</option>
+  </select></div>
+  <div class="bg"><label>順序</label><select id="om">
+    <option value="seq">依序</option><option value="rnd">隨機</option>
+  </select></div>
+  <div class="bg"><label>優先</label><select id="tp">
+    <option value="tf">是非先</option><option value="mc">選擇先</option>
+  </select></div>
+  <div class="bg"><label>星級≤</label><select id="sf">
+    <option value="ALL">全部</option>
+    <option value="0">★0</option><option value="3">★3</option><option value="5">★5</option>
+  </select></div>
+  <div id="sb">
+    <span class="sp" id="prof">熟練度 0%</span>
+    <span class="sp" id="sum">0/0</span>
+    <span class="sp" id="clk">00:00:00</span>
+    <button id="endb" onclick="endExam()">結束</button>
+  </div>
+</div>
+
+<div id="main">
+
+  <!-- 儲存狀態列 -->
+  <div id="storebar">
+    <span>💾 記錄：<b id="store-status">讀取中…</b></span>
+    <div style="display:flex;gap:6px;">
+      <button class="smbtn" onclick="exportJSON()">📤 匯出 JSON</button>
+      <button class="smbtn" onclick="document.getElementById('importInput').click()">📥 匯入 JSON</button>
+      <button class="smbtn danger" onclick="resetAll()">🗑 清除記錄</button>
+      <input type="file" id="importInput" accept=".json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </div>
+
+  <!-- 說明折疊 -->
+  <div id="guide">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <h3>📌 如何新增題目</h3>
+      <button id="guide-toggle" onclick="toggleGuide()">展開說明</button>
+    </div>
+    <div id="guide-body">
+      <p>用文字編輯器開啟本檔案，找到 <code>const BUILTIN_BANK=</code>，在陣列最後的 <code>]</code> 前貼入新題目：</p><br>
+      <p>🔹 <b>是非題：</b><br>
+      <code>,{"id":3,"type":"是非題","question":"108-3. 題目…","answer":"O","note":"答錯說明","star":0,"subject":"會計","year":108}</code></p><br>
+      <p>🔹 <b>選擇題：</b><br>
+      <code>,{"id":36,"type":"選擇題","question":"108-36. 題目…","options":["選項1","選項2","選項3","選項4"],"answer":"2","note":"答錯說明","star":0,"subject":"會計","year":108}</code></p><br>
+      <p>🔹 <b>欄位說明：</b><br>
+      • <code>subject</code>：會計 / 金融常識 / 存匯 / 資訊<br>
+      • <code>answer</code>：是非題 <code>"O"</code>/<code>"X"</code>；選擇題 <code>"1"</code>~<code>"4"</code><br>
+      • <code>note</code>：<code>"凡作答一律給分"</code> = 任何答案均給分<br>
+      • <code>star</code>：初始熟練度，填 <code>0</code><br><br>
+      ⚠️ 新增題目後，<b>先點「🗑 清除記錄」再重新整理頁面</b>，讓系統重新載入新題庫。</p>
+    </div>
+  </div>
+
+  <!-- 進度條 -->
+  <div id="pw">
+    <div id="pl">
+      <span id="ptxt">題目進度</span>
+      <div id="jw">跳題：<input type="number" id="ji" min="1" onkeydown="if(event.key==='Enter')jump()"><button onclick="jump()">Go</button></div>
+    </div>
+    <div id="pt"><div id="pf" style="width:0%"></div></div>
+  </div>
+
+  <!-- 題目 -->
+  <div id="qbox">
+    <div id="qh"><div id="badge">―</div><div id="stars"></div></div>
+    <div id="qt">載入中…</div>
+    <div id="opts"></div>
+    <div id="note"></div>
+  </div>
+
+  <!-- 導覽 -->
+  <div id="nav">
+    <button onclick="goFirst()">⇤第一</button>
+    <button onclick="pp()">←上10</button>
+    <button onclick="prev()">‹上一</button>
+    <button class="p" onclick="next()">下一›</button>
+    <button onclick="np()">下10→</button>
+    <button onclick="goLast()">最後⇥</button>
+  </div>
+</div>
+
+<!-- 結果 Modal -->
+<div id="mo"><div id="mb">
+  <h2>📊 作答結果</h2>
+  <div id="mr"></div>
+  <div id="ma">
+    <button id="saveb" onclick="saveAndClose()">✅ 儲存並繼續</button>
+    <button id="exportb" onclick="exportJSON()">📤 匯出 JSON</button>
+    <button onclick="closeModal()">關閉</button>
+  </div>
+</div></div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// BUILTIN_BANK — 程式內建題庫，新增題目請在此陣列加入
+// ══════════════════════════════════════════════════════
+const BUILTIN_BANK=[{"id":1,"type":"是非題","question":"108-1. 傳票所附之各種原始憑證單據應加蓋「附件」戳記，附訂於該傳票之後，並在傳票內註明附件張數。","answer":"O","note":"","star":5,"subject":"會計","year":108},{"id":2,"type":"是非題","question":"108-2. 活期存款、活期儲蓄存款等活期性存款之存款條及取款條等原始憑證不得作為代用傳票。","answer":"X","note":"得作為代用傳票","star":3,"subject":"會計","year":108},{"id":1,"type":"是非題","question":"109-1. 傳票之科目名稱及金額繕寫錯誤可直接更改，於更改處蓋章即可。","answer":"X","note":"不可直接更改，必須重新開立傳票","star":5,"subject":"會計","year":109},{"id":2,"type":"是非題","question":"109-2. 轉帳交易之有一部分現金收入或支出者，其現金部分應以「臨時存欠」科目處理。","answer":"O","note":"","star":3,"subject":"會計","year":109},{"id":1,"type":"是非題","question":"110-1. 記帳憑證即傳票，證明處理會計事項人員之責任，而為記帳所根據之憑證。","answer":"O","note":"","star":0,"subject":"會計","year":110},{"id":2,"type":"是非題","question":"110-2. 會計事項採用電腦處理時，嚴禁以電腦產出之報表裝訂成冊，代替帳簿。","answer":"X","note":"得以電腦產出之報表代替帳簿","star":2,"subject":"會計","year":110},{"id":1,"type":"是非題","question":"111-1. 會計年度依照預算法規定採曆年制，自每年1月1日起至12月31日止。","answer":"O","note":"","star":0,"subject":"會計","year":111},{"id":2,"type":"是非題","question":"111-2. 原始憑證係指證明處理會計事項人員之責任，而為記帳所根據之憑證；記帳憑證係指事項經過，而為造具原始憑證所根據之憑證。","answer":"X","note":"兩者定義互換","star":0,"subject":"會計","year":111},{"id":1,"type":"是非題","question":"112-1. 傳票之科目名稱繕寫錯誤，得直接更改，但須於更改處加蓋原印鑑。","answer":"X","note":"不得直接更改，必須重新開立","star":0,"subject":"會計","year":112},{"id":2,"type":"是非題","question":"112-2. 本行會計年度依照預算法規定採曆年制。","answer":"O","note":"","star":0,"subject":"會計","year":112},{"id":1,"type":"是非題","question":"113-1. 彙總申報印花稅計算方式，以每件憑證金額計算，單張憑證應納稅額尾數不足1元者，無需合併計算稅額。","answer":"O","note":"","star":6,"subject":"會計","year":113},{"id":2,"type":"是非題","question":"113-2. 本行會計基礎採用現金收付制。","answer":"X","note":"採用權責發生制","star":0,"subject":"會計","year":113},{"id":1,"type":"是非題","question":"114-1. 傳票應於傳票日起算7個營業日內整理裝訂送出納保管。","answer":"O","note":"","star":0,"subject":"會計","year":114},{"id":2,"type":"是非題","question":"114-2. 會計憑證及附屬單據之保存年限為10年以上。","answer":"X","note":"15年以上","star":0,"subject":"會計","year":114},{"id":1,"type":"是非題","question":"108-金融1. 【範例】中央銀行為我國最高金融主管機關，負責貨幣政策制定。","answer":"O","note":"","star":0,"subject":"金融常識","year":108},{"id":2,"type":"選擇題","question":"108-金融2. 【範例】下列何者為中央銀行的主要任務？","options":["發行貨幣","辦理消費者貸款","銷售保險商品","代銷基金"],"answer":"1","note":"","star":0,"subject":"金融常識","year":108},{"id":1,"type":"是非題","question":"109-金融1. 【範例】金融監督管理委員會（金管會）負責監理銀行、保險、證券等金融機構。","answer":"O","note":"","star":0,"subject":"金融常識","year":109},{"id":2,"type":"選擇題","question":"109-金融2. 【範例】下列何者非屬金融監督管理委員會之監理範圍？","options":["銀行業","保險業","證券業","中央銀行"],"answer":"4","note":"","star":0,"subject":"金融常識","year":109},{"id":1,"type":"是非題","question":"110-金融1. 【範例】存款保險保障每一存款人在同一要保機構的存款最高保障金額為新臺幣300萬元。","answer":"X","note":"新臺幣300萬元（目前為300萬）","star":0,"subject":"金融常識","year":110},{"id":2,"type":"選擇題","question":"110-金融2. 【範例】存款保險由下列何者辦理？","options":["中央銀行","金管會","中央存款保險公司","財政部"],"answer":"3","note":"","star":0,"subject":"金融常識","year":110},{"id":1,"type":"是非題","question":"111-金融1. 【範例】請在此填入111年金融常識第1題。","answer":"O","note":"","star":0,"subject":"金融常識","year":111},{"id":2,"type":"選擇題","question":"111-金融2. 【範例】請在此填入111年金融常識第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"金融常識","year":111},{"id":1,"type":"是非題","question":"112-金融1. 【範例】請在此填入112年金融常識第1題。","answer":"O","note":"","star":0,"subject":"金融常識","year":112},{"id":2,"type":"選擇題","question":"112-金融2. 【範例】請在此填入112年金融常識第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"金融常識","year":112},{"id":1,"type":"是非題","question":"113-金融1. 【範例】請在此填入113年金融常識第1題。","answer":"O","note":"","star":0,"subject":"金融常識","year":113},{"id":2,"type":"選擇題","question":"113-金融2. 【範例】請在此填入113年金融常識第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"金融常識","year":113},{"id":1,"type":"是非題","question":"114-金融1. 【範例】請在此填入114年金融常識第1題。","answer":"O","note":"","star":0,"subject":"金融常識","year":114},{"id":2,"type":"選擇題","question":"114-金融2. 【範例】請在此填入114年金融常識第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"金融常識","year":114},{"id":1,"type":"是非題","question":"108-存匯1. 【範例】活期存款戶存款餘額不足支付票據時，應予退票。","answer":"O","note":"","star":0,"subject":"存匯","year":108},{"id":2,"type":"選擇題","question":"108-存匯2. 【範例】下列何種存款無法辦理質借？","options":["定期存款","定期儲蓄存款","活期存款","綜合存款"],"answer":"3","note":"","star":0,"subject":"存匯","year":108},{"id":1,"type":"是非題","question":"109-存匯1. 【範例】請在此填入109年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":109},{"id":2,"type":"選擇題","question":"109-存匯2. 【範例】請在此填入109年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":109},{"id":1,"type":"是非題","question":"110-存匯1. 【範例】請在此填入110年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":110},{"id":2,"type":"選擇題","question":"110-存匯2. 【範例】請在此填入110年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":110},{"id":1,"type":"是非題","question":"111-存匯1. 【範例】請在此填入111年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":111},{"id":2,"type":"選擇題","question":"111-存匯2. 【範例】請在此填入111年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":111},{"id":1,"type":"是非題","question":"112-存匯1. 【範例】請在此填入112年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":112},{"id":2,"type":"選擇題","question":"112-存匯2. 【範例】請在此填入112年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":112},{"id":1,"type":"是非題","question":"113-存匯1. 【範例】請在此填入113年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":113},{"id":2,"type":"選擇題","question":"113-存匯2. 【範例】請在此填入113年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":113},{"id":1,"type":"是非題","question":"114-存匯1. 【範例】請在此填入114年存匯第1題。","answer":"O","note":"","star":0,"subject":"存匯","year":114},{"id":2,"type":"選擇題","question":"114-存匯2. 【範例】請在此填入114年存匯第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"存匯","year":114},{"id":1,"type":"是非題","question":"108-資訊1. 【範例】網路釣魚（Phishing）是指以假冒合法機構的電子郵件誘騙使用者提供個人資料。","answer":"O","note":"","star":0,"subject":"資訊","year":108},{"id":2,"type":"選擇題","question":"108-資訊2. 【範例】下列何者為預防電腦病毒感染之有效方法？","options":["定期更新防毒軟體","開啟所有電子郵件附件","使用弱密碼","關閉防火牆"],"answer":"1","note":"","star":0,"subject":"資訊","year":108},{"id":1,"type":"是非題","question":"109-資訊1. 【範例】請在此填入109年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":109},{"id":2,"type":"選擇題","question":"109-資訊2. 【範例】請在此填入109年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":109},{"id":1,"type":"是非題","question":"110-資訊1. 【範例】請在此填入110年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":110},{"id":2,"type":"選擇題","question":"110-資訊2. 【範例】請在此填入110年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":110},{"id":1,"type":"是非題","question":"111-資訊1. 【範例】請在此填入111年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":111},{"id":2,"type":"選擇題","question":"111-資訊2. 【範例】請在此填入111年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":111},{"id":1,"type":"是非題","question":"112-資訊1. 【範例】請在此填入112年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":112},{"id":2,"type":"選擇題","question":"112-資訊2. 【範例】請在此填入112年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":112},{"id":1,"type":"是非題","question":"113-資訊1. 【範例】請在此填入113年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":113},{"id":2,"type":"選擇題","question":"113-資訊2. 【範例】請在此填入113年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":113},{"id":1,"type":"是非題","question":"114-資訊1. 【範例】請在此填入114年資訊第1題。","answer":"O","note":"","star":0,"subject":"資訊","year":114},{"id":2,"type":"選擇題","question":"114-資訊2. 【範例】請在此填入114年資訊第2題。","options":["選項A","選項B","選項C","選項D"],"answer":"1","note":"","star":0,"subject":"資訊","year":114}];
+
+const LS_KEY = 'tb_exam_bank_v1';
+
+// ══════════════════════════════════════════════════════
+// BANK 管理：localStorage 存 star 記錄，與內建題庫合併
+// ══════════════════════════════════════════════════════
+let BANK = [];
+
+function loadBank(){
+  // 從 localStorage 讀取已存的 star 記錄
+  let saved = {};
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if(raw){
+      const arr = JSON.parse(raw);
+      arr.forEach(q => {
+        const key = q.subject+'|'+q.year+'|'+q.id;
+        saved[key] = q.star || 0;
+      });
+    }
+  } catch(e){}
+
+  // 合併：以內建題庫為主，star 用 localStorage 值覆蓋
+  BANK = BUILTIN_BANK.map(q => {
+    const key = q.subject+'|'+q.year+'|'+q.id;
+    return {...q, star: (key in saved) ? saved[key] : (q.star||0)};
+  });
+
+  updateStoreStatus();
+}
+
+function saveBank(){
+  // 只存 star 記錄（輕量）
+  const toSave = BANK.map(q=>({subject:q.subject,year:q.year,id:q.id,star:q.star||0}));
+  localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+  updateStoreStatus();
+}
+
+function updateStoreStatus(){
+  const raw = localStorage.getItem(LS_KEY);
+  const el = document.getElementById('store-status');
+  if(raw){
+    const arr = JSON.parse(raw);
+    const nonzero = arr.filter(q=>(q.star||0)>0).length;
+    el.textContent = '已儲存 '+arr.length+' 題記錄，其中 '+nonzero+' 題有熟練度';
+  } else {
+    el.textContent = '尚無儲存記錄（使用內建初始值）';
+  }
+}
+
+function resetAll(){
+  if(!confirm('確定要清除所有作答記錄（star 熟練度）？\n題目內容不會消失，僅清除熟練度。')) return;
+  localStorage.removeItem(LS_KEY);
+  loadBank();
+  reload();
+  toast('✅ 已清除所有作答記錄');
+}
+
+function exportJSON(){
+  // 把最新 star 存入後匯出完整題庫
+  const blob = new Blob([JSON.stringify(BANK,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const d = now.getFullYear()+pad(now.getMonth()+1)+pad(now.getDate());
+  a.href=url; a.download='bank_'+d+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  toast('📤 JSON 已匯出');
+}
+
+function importJSON(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const arr = JSON.parse(ev.target.result);
+      if(!Array.isArray(arr)) throw new Error('格式錯誤');
+      // 更新 BANK（以匯入的 star 為主，保留題目內容）
+      arr.forEach(imp => {
+        const i = BANK.findIndex(q=>q.subject===imp.subject&&q.year===imp.year&&q.id===imp.id);
+        if(i!==-1) BANK[i].star = imp.star||0;
+        // 若有新題目（內建沒有的）也加入
+        else if(imp.question) BANK.push(imp);
+      });
+      saveBank();
+      reload();
+      toast('📥 匯入成功！共 '+arr.length+' 筆記錄');
+    } catch(err){
+      alert('匯入失敗：'+err.message);
+    }
+    e.target.value='';
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let Q=[],cur=0,ans=[],t0=new Date(),ti,done=false;
+
+document.addEventListener('DOMContentLoaded',()=>{
+  loadBank();
+  ['subj','yr','om','tp','sf'].forEach(id=>
+    document.getElementById(id).addEventListener('change',reload));
+  reload();
+  t0=new Date();
+  ti=setInterval(tick,1000);
+});
+
+function reload(){
+  const subj=document.getElementById('subj').value;
+  const yr=document.getElementById('yr').value;
+  const om=document.getElementById('om').value;
+  const tp=document.getElementById('tp').value;
+  const sf=document.getElementById('sf').value;
+
+  let d=[...BANK];
+  if(subj!=='ALL') d=d.filter(q=>q.subject===subj);
+  if(yr!=='ALL')   d=d.filter(q=>String(q.year)===yr);
+  if(sf!=='ALL')   d=d.filter(q=>(q.star||0)<=+sf);
+
+  const srt=om==='rnd'
+    ?()=>Math.random()-.5
+    :(a,b)=>{
+      const ka=a.subject+String(a.year).padStart(3,'0')+String(a.id).padStart(4,'0');
+      const kb=b.subject+String(b.year).padStart(3,'0')+String(b.id).padStart(4,'0');
+      return ka.localeCompare(kb);
+    };
+  let tf=d.filter(q=>q.type==='是非題').sort(srt);
+  let mc=d.filter(q=>q.type==='選擇題').sort(srt);
+  Q=tp==='tf'?[...tf,...mc]:[...mc,...tf];
+  Q.forEach(q=>{if(q.star==null)q.star=0;});
+  ans=new Array(Q.length).fill(null);
+  cur=0; done=false;
+  show(); tick();
+}
+
+// ══════════════════════════════════════════════════════
+// DISPLAY
+// ══════════════════════════════════════════════════════
+function tick(){
+  const d=Math.floor((new Date()-t0)/1000);
+  document.getElementById('clk').textContent=
+    pad(~~(d/3600))+':'+pad(~~(d/60)%60)+':'+pad(d%60);
+  const tot=Q.length,got=ans.filter(a=>a!=null).length;
+  document.getElementById('sum').textContent=got+'/'+tot;
+  const avg=tot?Math.round(Q.reduce((s,q)=>s+(q.star||0),0)/tot)*10:0;
+  document.getElementById('prof').textContent='熟練度 '+avg+'%';
+  document.getElementById('pf').style.width=(tot?(cur+1)/tot*100:0)+'%';
+  document.getElementById('ptxt').textContent='第 '+(cur+1)+' / '+tot+' 題';
+}
+function pad(n){return String(n).padStart(2,'0');}
+
+function show(){
+  if(!Q[cur])return;
+  const q=Q[cur];
+  document.getElementById('badge').textContent=
+    q.subject+' '+q.year+'-'+q.id+' | '+q.type;
+  document.getElementById('qt').textContent='('+(cur+1)+') '+q.question;
+  document.getElementById('note').textContent='';
+  renderStars(q.star);
+  const d=document.getElementById('opts'); d.innerHTML='';
+  const s=ans[cur];
+  const add=(v,l)=>{
+    const el=document.createElement('div');
+    el.className='opt'+(s===v?' sel':'');
+    el.dataset.v=v;
+    el.innerHTML='<input type="radio" name="o" value="'+v+'" '+(s===v?'checked':'')+'>  <label>'+l+'</label>';
+    el.addEventListener('click',()=>pick(v));
+    d.appendChild(el);
+  };
+  if(q.type==='是非題'){add('O','○ 是');add('X','✕ 否');}
+  else q.options.forEach((t,i)=>add(String(i+1),(i+1)+'. '+t));
+  if(s!=null){
+    if(q.note!=='凡作答一律給分'&&s!==q.answer)
+      document.getElementById('note').textContent='✗ 正確答案：'+q.answer+'　說明：'+q.note;
+    hl(q.answer,s);
+  }
+  tick();
+}
+
+function hl(ok,sel){
+  document.querySelectorAll('.opt').forEach(el=>{
+    const v=el.dataset.v;
+    el.classList.remove('ok','no','sel');
+    if(v===ok)el.classList.add('ok');
+    else if(v===sel&&sel!==ok)el.classList.add('no');
+  });
+}
+function renderStars(n){
+  const el=document.getElementById('stars');
+  if(!n){el.textContent='';return;}
+  if(n>=10){el.textContent='❤️';el.style.color='#f69';}
+  else{el.textContent='⭐'.repeat(Math.min(10,n));el.style.color='#f5c842';}
+}
+
+// ══════════════════════════════════════════════════════
+// INTERACTION
+// ══════════════════════════════════════════════════════
+function pick(v){
+  if(done)return;
+  const q=Q[cur]; ans[cur]=v;
+  const ok=q.note==='凡作答一律給分'||v===q.answer;
+  if(!ok){
+    document.getElementById('note').textContent=
+      '✗ 正確答案：'+q.answer+'　說明：'+q.note;
+    q.star=0;
+  } else {
+    q.star=Math.min(10,(q.star||0)+1);
+  }
+  // 每次作答立即自動儲存 star 到 localStorage
+  const idx=BANK.findIndex(b=>b.subject===q.subject&&b.year===q.year&&b.id===q.id);
+  if(idx!==-1){ BANK[idx].star=q.star; saveBank(); }
+  hl(q.answer,v); renderStars(q.star); tick();
+}
+
+function prev(){if(cur>0){cur--;show();}}
+function next(){if(cur<Q.length-1){cur++;show();}}
+function goFirst(){cur=0;show();}
+function goLast(){cur=Q.length-1;show();}
+function pp(){cur=Math.max(0,cur-10);show();}
+function np(){cur=Math.min(Q.length-1,cur+10);show();}
+function jump(){
+  const v=+document.getElementById('ji').value;
+  if(v>=1&&v<=Q.length){cur=v-1;show();}
+}
+
+// ══════════════════════════════════════════════════════
+// END EXAM
+// ══════════════════════════════════════════════════════
+function endExam(){
+  clearInterval(ti); done=true;
+  let ok=0,fs=0;
+  const tot=Q.length,got=ans.filter(a=>a!=null).length;
+  Q.forEach((q,i)=>{
+    const a=ans[i];
+    if(a!=null&&(q.note==='凡作答一律給分'||a===q.answer)){ok++;fs++;}
+    else if(a!=null&&q.type==='是非題')fs--;
+  });
+  const acc=got?(ok/got*100).toFixed(1):'0.0';
+  document.getElementById('mr').innerHTML=
+    [['科目',document.getElementById('subj').value],
+     ['年份',document.getElementById('yr').value],
+     ['總題數',tot+'題'],['已作答',got+'題'],
+     ['未作答',(tot-got)+'題'],['答對',ok+'題'],
+     ['答錯',(got-ok)+'題'],['正確率',acc+'%'],
+     ['得分',fs+'分']]
+    .map(([k,v])=>'<div class="rr"><span>'+k+'</span><span class="rv">'+v+'</span></div>')
+    .join('');
+  document.getElementById('mo').classList.add('show');
+}
+
+function saveAndClose(){
+  saveBank();
+  toast('✅ 作答記錄已自動儲存！');
+  closeModal();
+  // 重啟計時器
+  t0=new Date(); done=false;
+  ti=setInterval(tick,1000);
+}
+function closeModal(){document.getElementById('mo').classList.remove('show');}
+
+// ══════════════════════════════════════════════════════
+// TOAST & GUIDE
+// ══════════════════════════════════════════════════════
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),2500);
+}
+function toggleGuide(){
+  const b=document.getElementById('guide-body');
+  const btn=document.getElementById('guide-toggle');
+  if(b.style.display==='block'){b.style.display='none';btn.textContent='展開說明';}
+  else{b.style.display='block';btn.textContent='收起說明';}
+}
+</script>
+</body>
+</html>
