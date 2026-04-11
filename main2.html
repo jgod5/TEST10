@@ -112,7 +112,15 @@ select:hover,button:hover{border-color:var(--acc);}
   </select></div>
   <div class="bg"><label>星級≤</label><select id="sf">
     <option value="ALL">全部</option>
-    <option value="0">★0</option><option value="3">★3</option><option value="5">★5</option>
+    <option value="0">★0</option><option value="3">★3</option><option value="5">★5</option><option value="9">★9</option>
+  </select></div>
+  <div class="bg"><label>題型</label><select id="qtype">
+    <option value="ALL">全部</option>
+    <option value="date">日期</option>
+    <option value="number">數字</option>
+    <option value="money">金錢</option>
+    <option value="person">人員</option>
+    <option value="unit">單位</option>
   </select></div>
   <div id="sb">
     <span class="sp" id="prof">熟練度 0%</span>
@@ -30295,9 +30303,10 @@ function resetAll(){
   const subj = document.getElementById('subj').value;
   const yr   = document.getElementById('yr').value;
   const sf   = document.getElementById('sf').value;
+  const qt   = document.getElementById('qtype').value;
 
   // 判斷是否有任何篩選
-  const isFiltered = (subj !== 'ALL' || yr !== 'ALL' || sf !== 'ALL');
+  const isFiltered = (subj !== 'ALL' || yr !== 'ALL' || sf !== 'ALL' || qt !== 'ALL');
 
   // 組成描述文字，讓使用者知道清除範圍
   let scopeDesc = '所有';
@@ -30306,6 +30315,7 @@ function resetAll(){
     if(subj !== 'ALL') parts.push('科目：' + subj);
     if(yr   !== 'ALL') parts.push('年份：' + yr);
     if(sf   !== 'ALL') parts.push('熟練度 ≤ ' + sf + ' 星');
+    if(qt   !== 'ALL') parts.push('題型：' + {'date':'日期','number':'數字','money':'金錢','person':'人員','unit':'單位'}[qt]);
     scopeDesc = parts.join('、');
   }
 
@@ -30322,6 +30332,7 @@ function resetAll(){
     if(subj !== 'ALL') targets = targets.filter(q => q.subject === subj);
     if(yr   !== 'ALL') targets = targets.filter(q => String(q.year) === yr);
     if(sf   !== 'ALL') targets = targets.filter(q => (q.star||0) <= +sf);
+    if(qt   !== 'ALL') targets = targets.filter(q => matchQtype(q, qt));
 
     const targetKeys = new Set(targets.map(q => q.subject+'|'+q.year+'|'+q.id));
 
@@ -30398,12 +30409,23 @@ let Q=[],cur=0,ans=[],t0=new Date(),ti,done=false;
 
 document.addEventListener('DOMContentLoaded',()=>{
   loadBank();
-  ['subj','yr','om','tp','sf'].forEach(id=>
+  ['subj','yr','om','tp','sf','qtype'].forEach(id=>
     document.getElementById(id).addEventListener('change',reload));
   reload();
   t0=new Date();
   ti=setInterval(tick,1000);
 });
+
+function matchQtype(q, qt){
+  if(qt==='ALL') return true;
+  const text=(q.question||'')+(q.note||'')+(q.options?q.options.join(''):'');
+  if(qt==='date') return /日|天|月|年|時|分|期|週|周|次日|營業日|到期|期限|逾期|屆滿|當日|前日|後日/.test(text);
+  if(qt==='number') return /\d+%|百分|比率|比例|倍|萬|億|千|百|[0-9]+[\s]*[個件張次本]/u.test(text)||/[0-9]/.test(text)&&/比率|比例|成數|倍數|%/.test(text);
+  if(qt==='money') return /元|金額|費用|稅|收入|支出|存款|放款|利率|利息|手續費|罰金|價格|價款|資金|款項|現金|金融|薪|幣/.test(text);
+  if(qt==='person') return /人員|權限|主管|職員|行員|授權|簽章|負責人|主辦|經辦|覆核|審核人|管理員|使用者|帳號|密碼|身分|職務|職位|核准/.test(text);
+  if(qt==='unit') return /單位|部門|處|科|組|分行|總行|營業單位|會計處|稽核處|資訊處|總務處|機構|組織|層級/.test(text);
+  return true;
+}
 
 function reload(){
   const subj=document.getElementById('subj').value;
@@ -30411,11 +30433,13 @@ function reload(){
   const om=document.getElementById('om').value;
   const tp=document.getElementById('tp').value;
   const sf=document.getElementById('sf').value;
+  const qt=document.getElementById('qtype').value;
 
   let d=[...BANK];
   if(subj!=='ALL') d=d.filter(q=>q.subject===subj);
   if(yr!=='ALL')   d=d.filter(q=>String(q.year)===yr);
   if(sf!=='ALL')   d=d.filter(q=>(q.star||0)<=+sf);
+  if(qt!=='ALL')   d=d.filter(q=>matchQtype(q,qt));
 
   const srt=om==='rnd'
     ?()=>Math.random()-.5
