@@ -30291,11 +30291,59 @@ function updateStoreStatus(){
 }
 
 function resetAll(){
-  if(!confirm('確定要清除所有作答記錄（star 熟練度）？\n題目內容不會消失，僅清除熟練度。')) return;
-  localStorage.removeItem(LS_KEY);
+  // 取得目前篩選條件
+  const subj = document.getElementById('subj').value;
+  const yr   = document.getElementById('yr').value;
+  const sf   = document.getElementById('sf').value;
+
+  // 判斷是否有任何篩選
+  const isFiltered = (subj !== 'ALL' || yr !== 'ALL' || sf !== 'ALL');
+
+  // 組成描述文字，讓使用者知道清除範圍
+  let scopeDesc = '所有';
+  if(isFiltered){
+    const parts = [];
+    if(subj !== 'ALL') parts.push('科目：' + subj);
+    if(yr   !== 'ALL') parts.push('年份：' + yr);
+    if(sf   !== 'ALL') parts.push('熟練度 ≤ ' + sf + ' 星');
+    scopeDesc = parts.join('、');
+  }
+
+  if(!confirm('確定要清除【' + scopeDesc + '】的作答記錄（熟練度將歸零）？\n題目內容不會消失，僅清除熟練度記錄。')) return;
+
+  if(!isFiltered){
+    // 無篩選：清除全部（原本行為）
+    localStorage.removeItem(LS_KEY);
+    BANK.forEach(q => q.star = 0);
+  } else {
+    // 有篩選：只清除符合條件的題目 star
+    // 先建立要清除的題目 id set
+    let targets = [...BANK];
+    if(subj !== 'ALL') targets = targets.filter(q => q.subject === subj);
+    if(yr   !== 'ALL') targets = targets.filter(q => String(q.year) === yr);
+    if(sf   !== 'ALL') targets = targets.filter(q => (q.star||0) <= +sf);
+
+    const targetKeys = new Set(targets.map(q => q.subject+'|'+q.year+'|'+q.id));
+
+    // 將 BANK 中符合的 star 歸零
+    BANK.forEach(q => {
+      const key = q.subject+'|'+q.year+'|'+q.id;
+      if(targetKeys.has(key)) q.star = 0;
+    });
+
+    // 存回 localStorage
+    saveBank();
+  }
+
   loadBank();
+  // 若結果 modal 開著，先關閉
+  closeModal();
+  // 重設計時器
+  clearInterval(ti);
+  t0 = new Date(); done = false;
+  ti = setInterval(tick, 1000);
   reload();
-  toast('✅ 已清除所有作答記錄');
+  toast('✅ 已清除【' + scopeDesc + '】的作答記錄');
 }
 
 function exportJSON(){
@@ -30326,12 +30374,19 @@ function importJSON(e){
         else if(imp.question) BANK.push(imp);
       });
       saveBank();
+      // 若結果 modal 開著，先關閉
+      closeModal();
+      // 重設計時器
+      clearInterval(ti);
+      t0 = new Date(); done = false;
+      ti = setInterval(tick, 1000);
       reload();
       toast('📥 匯入成功！共 '+arr.length+' 筆記錄');
     } catch(err){
       alert('匯入失敗：'+err.message);
     }
-    e.target.value='';
+    // 無論成功或失敗，都重設 input value，確保同一檔案可重複匯入
+    e.target.value = '';
   };
   reader.readAsText(file);
 }
@@ -30442,14 +30497,19 @@ function renderStars(n){
 // ══════════════════════════════════════════════════════
 function pick(v){
   if(done)return;
-  const q=Q[cur]; ans[cur]=v;
+  const q=Q[cur];
+  const alreadyAnswered = ans[cur] !== null; // 本批次已作答過
+  ans[cur]=v;
   const ok=q.note==='凡作答一律給分'||v===q.answer;
   if(!ok){
     document.getElementById('note').textContent=
       '✗ 正確答案：'+q.answer+'　說明：'+q.note;
     q.star=0;
   } else {
-    q.star=Math.min(10,(q.star||0)+1);
+    // 同批次已答對過，不重複加星星
+    if(!alreadyAnswered){
+      q.star=Math.min(10,(q.star||0)+1);
+    }
   }
   // 每次作答立即自動儲存 star 到 localStorage
   const idx=BANK.findIndex(b=>b.subject===q.subject&&b.year===q.year&&b.id===q.id);
