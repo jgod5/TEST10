@@ -116,9 +116,8 @@ select:hover,button:hover{border-color:var(--acc);}
   </select></div>
   <div class="bg"><label>題型</label><select id="qtype">
     <option value="ALL">全部</option>
-    <option value="date">日期</option>
+    <option value="time">時間</option>
     <option value="number">數字</option>
-    <option value="money">金錢</option>
     <option value="person">人員</option>
     <option value="unit">單位</option>
   </select></div>
@@ -30315,7 +30314,7 @@ function resetAll(){
     if(subj !== 'ALL') parts.push('科目：' + subj);
     if(yr   !== 'ALL') parts.push('年份：' + yr);
     if(sf   !== 'ALL') parts.push('熟練度 ≤ ' + sf + ' 星');
-    if(qt   !== 'ALL') parts.push('題型：' + {'date':'日期','number':'數字','money':'金錢','person':'人員','unit':'單位'}[qt]);
+    if(qt   !== 'ALL') parts.push('題型：' + {'time':'時間','number':'數字','person':'人員','unit':'單位'}[qt]);
     scopeDesc = parts.join('、');
   }
 
@@ -30418,12 +30417,31 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 function matchQtype(q, qt){
   if(qt==='ALL') return true;
-  const text=(q.question||'')+(q.note||'')+(q.options?q.options.join(''):'');
-  if(qt==='date') return /日|天|月|年|時|分|期|週|周|次日|營業日|到期|期限|逾期|屆滿|當日|前日|後日/.test(text);
-  if(qt==='number') return /\d+%|百分|比率|比例|倍|萬|億|千|百|[0-9]+[\s]*[個件張次本]/u.test(text)||/[0-9]/.test(text)&&/比率|比例|成數|倍數|%/.test(text);
-  if(qt==='money') return /元|金額|費用|稅|收入|支出|存款|放款|利率|利息|手續費|罰金|價格|價款|資金|款項|現金|金融|薪|幣/.test(text);
-  if(qt==='person') return /人員|權限|主管|職員|行員|授權|簽章|負責人|主辦|經辦|覆核|審核人|管理員|使用者|帳號|密碼|身分|職務|職位|核准/.test(text);
-  if(qt==='unit') return /單位|部門|處|科|組|分行|總行|營業單位|會計處|稽核處|資訊處|總務處|機構|組織|層級/.test(text);
+  const isTF = q.type === '是非題';
+  // 是非題：只找題目文字；選擇題：只找正確答案選項文字
+  let text;
+  if(isTF){
+    text = q.question || '';
+  } else {
+    const opts = q.options || [];
+    const ansIdx = parseInt(q.answer, 10) - 1;
+    text = (opts[ansIdx] !== undefined ? opts[ansIdx] : opts.join(''));
+  }
+  if(qt==='time'){
+    return /秒|分鐘|小時|天|旬|月|年/.test(text) || /(?<![０-９0-9])\d+日(?!\s*[,，。）\)])/.test(text);
+  }
+  if(qt==='number'){
+    const body = isTF
+      ? text.replace(/^[\*\s]*\d+[-－]\d+[\.\。\s]+/, '')
+      : text;
+    return /[0-9]|元|十|百|千|萬|錢|%|百分比|\./.test(body);
+  }
+  if(qt==='person'){
+    return /董事長|稽核|總經理|經理|副理|襄理|高專|辦事員|處長|副處長|科長|副科長|組長|經辦|單位主管|會計|出納|存匯|外匯|保全/.test(text);
+  }
+  if(qt==='unit'){
+    return /總行|分行|稽核處|資訊處|資安處|會計處|人資處|總務處|電金部|程式設計一科|程式設計二科|程式設計三科|程式設計四科|業務處理科|作業管制科|資訊管理科|連線管理科|制度分析科/.test(text);
+  }
   return true;
 }
 
