@@ -223,6 +223,41 @@ const BUILTIN_BANK=[{"id":1,"type":"是非題","question":"108-1. 傳票所附�
 const LS_KEY = 'tb_exam_bank_v1';
 
 // ══════════════════════════════════════════════════════
+// safeStorage：包裝 localStorage，防止 iOS Safari 無痕
+// 模式、儲存空間不足、或其他限制導致程式卡住
+// ══════════════════════════════════════════════════════
+const safeStorage = (function(){
+  let _available = null;
+  function check(){
+    if(_available !== null) return _available;
+    try {
+      const t = '__ls_test__';
+      localStorage.setItem(t, '1');
+      localStorage.removeItem(t);
+      _available = true;
+    } catch(e){
+      _available = false;
+    }
+    return _available;
+  }
+  return {
+    get(key){
+      if(!check()) return null;
+      try { return localStorage.getItem(key); } catch(e){ return null; }
+    },
+    set(key, val){
+      if(!check()) return;
+      try { localStorage.setItem(key, val); } catch(e){}
+    },
+    remove(key){
+      if(!check()) return;
+      try { localStorage.removeItem(key); } catch(e){}
+    },
+    isAvailable(){ return check(); }
+  };
+})();
+
+// ══════════════════════════════════════════════════════
 // BANK 管理：localStorage 存 star 記錄，與內建題庫合併
 // ══════════════════════════════════════════════════════
 let BANK = [];
@@ -231,7 +266,7 @@ function loadBank(){
   // 從 localStorage 讀取已存的 star 記錄
   let saved = {};
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = safeStorage.get(LS_KEY);
     if(raw){
       const arr = JSON.parse(raw);
       arr.forEach(q => {
@@ -253,17 +288,26 @@ function loadBank(){
 function saveBank(){
   // 只存 star 記錄（輕量）
   const toSave = BANK.map(q=>({subject:q.subject,year:q.year,id:q.id,star:q.star||0}));
-  localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+  safeStorage.set(LS_KEY, JSON.stringify(toSave));
   updateStoreStatus();
 }
 
 function updateStoreStatus(){
-  const raw = localStorage.getItem(LS_KEY);
   const el = document.getElementById('store-status');
+  if(!el) return;
+  if(!safeStorage.isAvailable()){
+    el.textContent = '⚠️ 此瀏覽器不支援儲存（無痕模式？），熟練度僅限本次使用';
+    return;
+  }
+  const raw = safeStorage.get(LS_KEY);
   if(raw){
-    const arr = JSON.parse(raw);
-    const nonzero = arr.filter(q=>(q.star||0)>0).length;
-    el.textContent = '已儲存 '+arr.length+' 題記錄，其中 '+nonzero+' 題有熟練度';
+    try {
+      const arr = JSON.parse(raw);
+      const nonzero = arr.filter(q=>(q.star||0)>0).length;
+      el.textContent = '已儲存 '+arr.length+' 題記錄，其中 '+nonzero+' 題有熟練度';
+    } catch(e){
+      el.textContent = '記錄讀取異常，將使用內建初始值';
+    }
   } else {
     el.textContent = '尚無儲存記錄（使用內建初始值）';
   }
@@ -294,7 +338,7 @@ function resetAll(){
 
   if(!isFiltered){
     // 無篩選：清除全部（原本行為）
-    localStorage.removeItem(LS_KEY);
+    safeStorage.remove(LS_KEY);
     BANK.forEach(q => q.star = 0);
   } else {
     // 有篩選：只清除符合條件的題目 star
