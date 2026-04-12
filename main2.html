@@ -120,6 +120,7 @@ select:hover,button:hover{border-color:var(--acc);}
     <option value="number">數字</option>
     <option value="person">人員</option>
     <option value="unit">單位</option>
+    <option value="similar">類似</option>
   </select></div>
   <div id="sb">
     <span class="sp" id="prof">熟練度 0%</span>
@@ -30415,32 +30416,73 @@ document.addEventListener('DOMContentLoaded',()=>{
   ti=setInterval(tick,1000);
 });
 
-function matchQtype(q, qt){
-  if(qt==='ALL') return true;
-  const isTF = q.type === '是非題';
-  // 是非題：只找題目文字；選擇題：只找正確答案選項文字
-  let text;
-  if(isTF){
-    text = q.question || '';
+// 取得題目的「比對用文字」：是非題取題目，選擇題取正確答案選項
+function getQText(q){
+  if(q.type === '是非題'){
+    return q.question || '';
   } else {
     const opts = q.options || [];
     const ansIdx = parseInt(q.answer, 10) - 1;
-    text = (opts[ansIdx] !== undefined ? opts[ansIdx] : opts.join(''));
+    return opts[ansIdx] !== undefined ? opts[ansIdx] : opts.join('');
   }
+}
+
+// 將字串切成 bigram（連續2字）集合，過濾數字與標點
+function toBigrams(s){
+  const clean = s.replace(/[\s，。、；：「」（）【】！？\d]/g, '');
+  const set = new Set();
+  for(let i = 0; i < clean.length - 1; i++) set.add(clean[i]+clean[i+1]);
+  return set;
+}
+
+// 預先計算「類似」題目集合（bigram Jaccard >= 0.3，連續詞片段約30%以上相同）
+let _similarIds = null;
+function buildSimilarSet(bank){
+  _similarIds = new Set();
+  const texts = bank.map(q => getQText(q));
+  const bgrams = texts.map(t => toBigrams(t));
+  for(let i = 0; i < bank.length; i++){
+    if(bgrams[i].size === 0) continue;
+    for(let j = i+1; j < bank.length; j++){
+      if(bgrams[j].size === 0) continue;
+      let inter = 0;
+      bgrams[i].forEach(g => { if(bgrams[j].has(g)) inter++; });
+      const union = bgrams[i].size + bgrams[j].size - inter;
+      if(union > 0 && inter/union >= 0.3){
+        _similarIds.add(bank[i].id);
+        _similarIds.add(bank[j].id);
+      }
+    }
+  }
+  return _similarIds;
+}
+
+function matchQtype(q, qt){
+  if(qt==='ALL') return true;
+  const isTF = q.type === '是非題';
+  // 是非題：只找題目關鍵字；選擇題：只找正確答案選項文字
+  let text = getQText(q);
+
   if(qt==='time'){
-    return /秒|分鐘|小時|天|旬|月|年/.test(text) || /(?<![０-９0-9])\d+日(?!\s*[,，。）\)])/.test(text);
+    // 時間關鍵字：秒、分鐘、小時、天、日、旬、月、年、營業日、日曆日
+    return /秒|分鐘|小時|天|旬|月|年|營業日|日曆日/.test(text) ||
+           /\d+日/.test(text);
   }
   if(qt==='number'){
+    // 數字：排除是非題題目開頭的題號（如 108-1. 或 *108-15.）
     const body = isTF
-      ? text.replace(/^[\*\s]*\d+[-－]\d+[\.\。\s]+/, '')
+      ? text.replace(/^[\*\s]*\d[\d\-]*[\.\。]\s*/, '')
       : text;
-    return /[0-9]|元|十|百|千|萬|錢|%|百分比|\./.test(body);
+    // 篩選含有數字0~9、元、十、百、千、萬、錢、%、百分比、小數點(.)的題目
+    return /[0-9]|元|十|百|千|萬|錢|%|百分比|小數點|\./.test(body);
   }
   if(qt==='person'){
-    return /董事長|稽核|總經理|經理|副理|襄理|高專|辦事員|處長|副處長|科長|副科長|組長|經辦|單位主管|會計|出納|存匯|外匯|保全/.test(text);
+    // 人員關鍵字（精確名單）
+    return /董事長|稽核|總經理|(?<!副)經理|副理|襄理|高專|辦事員|(?<!副)處長|副處長|(?<!副)科長|副科長|組長|經辦|單位主管|主辦會計|出納人員|主辦存匯|總務人員|保全|外庫人員|內庫人員|大出納|小出納|櫃員|出納主管|櫃員主任|會計人員|甲組|乙組/.test(text);
   }
   if(qt==='unit'){
-    return /總行|分行|稽核處|資訊處|資安處|會計處|人資處|總務處|電金部|程式設計一科|程式設計二科|程式設計三科|程式設計四科|業務處理科|作業管制科|資訊管理科|連線管理科|制度分析科/.test(text);
+    // 單位關鍵字（精確名單）
+    return /營業單位|稽核處|資訊處|資安處|會計處|人資處|總務處|電金部|程式設計一科|程式設計二科|程式設計三科|程式設計四科|業務處理科|作業管制科|資訊管理科|連線管理科|制度分析科|中央銀行/.test(text);
   }
   return true;
 }
@@ -30453,11 +30495,20 @@ function reload(){
   const sf=document.getElementById('sf').value;
   const qt=document.getElementById('qtype').value;
 
+  // 切換條件時重置「類似」快取，確保以目前BANK重新計算
+  _similarIds = null;
+
   let d=[...BANK];
   if(subj!=='ALL') d=d.filter(q=>q.subject===subj);
   if(yr!=='ALL')   d=d.filter(q=>String(q.year)===yr);
   if(sf!=='ALL')   d=d.filter(q=>(q.star||0)<=+sf);
-  if(qt!=='ALL')   d=d.filter(q=>matchQtype(q,qt));
+  if(qt==='similar'){
+    // 「類似」：對已套用其他篩選後的題庫進行兩兩相似度比對
+    buildSimilarSet(d);
+    d=d.filter(q=>_similarIds.has(q.id));
+  } else if(qt!=='ALL'){
+    d=d.filter(q=>matchQtype(q,qt));
+  }
 
   const srt=om==='rnd'
     ?()=>Math.random()-.5
