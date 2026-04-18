@@ -753,21 +753,65 @@ function jump(){
 // ══════════════════════════════════════════════════════
 function endExam(){
   clearInterval(ti); done=true;
-  let ok=0,fs=0;
-  const tot=Q.length,got=ans.filter(a=>a!=null).length;
+
+  // ── 計分規則 ──
+  // 【金融常識】是非題答對+1/答錯-1；選擇題答對+2/答錯不倒扣
+  // 【會計/存匯/資訊】是非題答對+1/答錯-1；選擇題答對+1/答錯不倒扣
+  // 未作答：不計分、不扣分
+  // 最低得分：0分（不出現負分）
+
+  function mcPts(q){ return q.subject==='金融常識' ? 2 : 1; }
+
+  let okTF=0,wrongTF=0,okMC=0,wrongMC=0,rawScore=0;
+  const tot=Q.length, got=ans.filter(a=>a!=null).length;
+
   Q.forEach((q,i)=>{
     const a=ans[i];
-    if(a!=null&&(q.note==='凡作答一律給分'||a===q.answer)){ok++;fs++;}
-    else if(a!=null&&q.type==='是非題')fs--;
+    if(a==null) return;
+    const correct=(q.note==='凡作答一律給分'||a===q.answer);
+    if(q.type==='是非題'){
+      if(correct){ okTF++;  rawScore+=1; }
+      else        { wrongTF++; rawScore-=1; }
+    } else {
+      if(correct){ okMC++;  rawScore+=mcPts(q); }
+      else        { wrongMC++; }
+    }
   });
-  const acc=got?(ok/got*100).toFixed(1):'0.0';
+
+  // 最低0分，不出現負分
+  const totalScore = Math.max(0, rawScore);
+
+  // 滿分計算
+  let maxScore=0;
+  Q.forEach(q=>{ maxScore += q.type==='是非題' ? 1 : mcPts(q); });
+
+  const okAll=okTF+okMC;
+  const acc=got?(okAll/got*100).toFixed(1):'0.0';
+  const cntTF=Q.filter(q=>q.type==='是非題').length;
+  const cntMC=Q.filter(q=>q.type==='選擇題').length;
+
+  // 選擇題實際得分加總
+  const mcGot=Q.reduce((s,q,i)=>{
+    if(q.type!=='選擇題') return s;
+    const a=ans[i]; if(a==null) return s;
+    return (q.note==='凡作答一律給分'||a===q.answer)?s+mcPts(q):s;
+  },0);
+
+  const subjVal=document.getElementById('subj').value;
+  const mcLabel=subjVal==='金融常識'?'每題2分':subjVal==='ALL'?'金融常識2分/其他1分':'每題1分';
+
   document.getElementById('mr').innerHTML=
-    [['科目',document.getElementById('subj').value],
-     ['年份',document.getElementById('yr').value],
-     ['總題數',tot+'題'],['已作答',got+'題'],
-     ['未作答',(tot-got)+'題'],['答對',ok+'題'],
-     ['答錯',(got-ok)+'題'],['正確率',acc+'%'],
-     ['得分',fs+'分']]
+    [['科目', subjVal],
+     ['年份', document.getElementById('yr').value],
+     ['總題數', tot+'題（是非'+cntTF+'題 / 選擇'+cntMC+'題）'],
+     ['已作答', got+'題'],
+     ['未作答', (tot-got)+'題（不計分）'],
+     ['是非　答對', okTF+'題　+'+okTF+' 分'],
+     ['是非　答錯', wrongTF+'題　-'+wrongTF+' 分（倒扣）'],
+     ['選擇　答對', okMC+'題　+'+mcGot+' 分（'+mcLabel+'）'],
+     ['選擇　答錯', wrongMC+'題　+0 分（不倒扣）'],
+     ['正確率', acc+'%'],
+     ['得分', totalScore+' 分　／　滿分 '+maxScore+' 分'+(rawScore<0?' （計算後取0）':'')]]
     .map(([k,v])=>'<div class="rr"><span>'+k+'</span><span class="rv">'+v+'</span></div>')
     .join('');
   document.getElementById('mo').classList.add('show');
