@@ -799,7 +799,8 @@ function endExam(){
   // 應用「最低0分」限制
   const finalScore=Math.max(0,rawScore);
   const maxScore=tfCt+mcPts_all;
-  const acc=got?(mcOk*100/mcCt).toFixed(1):'0.0';
+  const totalAnswered = got > 0 ? got : 1;
+  const acc = ((tfOk + mcOk) / totalAnswered * 100).toFixed(1);
   
   // 構建結果顯示
   const resultLines=[
