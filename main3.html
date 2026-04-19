@@ -749,25 +749,91 @@ function jump(){
 }
 
 // ══════════════════════════════════════════════════════
+// 計分輔助函式：根據科目回傳選擇題分值
+// ══════════════════════════════════════════════════════
+function mcPts(q){
+  return q.subject==='金融常識'?2:1;
+}
+
+// ══════════════════════════════════════════════════════
 // END EXAM
 // ══════════════════════════════════════════════════════
 function endExam(){
   clearInterval(ti); done=true;
-  let ok=0,fs=0;
-  const tot=Q.length,got=ans.filter(a=>a!=null).length;
+  
+  const tot=Q.length;
+  const got=ans.filter(a=>a!=null).length;
+  
+  // 分類統計
+  let tfOk=0,tfCt=0;  // 是非題：對、總數
+  let tfErr=0;        // 是非題錯誤數
+  let mcOk=0,mcCt=0;  // 選擇題：對、總數
+  let mcPts_all=0;    // 選擇題滿分
+  let rawScore=0;     // 原始得分（可能為負）
+  
   Q.forEach((q,i)=>{
     const a=ans[i];
-    if(a!=null&&(q.note==='凡作答一律給分'||a===q.answer)){ok++;fs++;}
-    else if(a!=null&&q.type==='是非題')fs--;
+    if(a===null)return; // 未作答，跳過
+    
+    if(q.type==='是非題'){
+      tfCt++;
+      if(q.note==='凡作答一律給分'||a===q.answer){
+        tfOk++;
+        rawScore+=1;
+      }else{
+        tfErr++;
+        rawScore-=1;
+      }
+    }else if(q.type==='選擇題'){
+      const pts=mcPts(q);
+      mcCt++;
+      mcPts_all+=pts;
+      if(q.note==='凡作答一律給分'||a===q.answer){
+        mcOk++;
+        rawScore+=pts;
+      }
+      // 選擇題答錯不倒扣
+    }
   });
-  const acc=got?(ok/got*100).toFixed(1):'0.0';
-  document.getElementById('mr').innerHTML=
-    [['科目',document.getElementById('subj').value],
-     ['年份',document.getElementById('yr').value],
-     ['總題數',tot+'題'],['已作答',got+'題'],
-     ['未作答',(tot-got)+'題'],['答對',ok+'題'],
-     ['答錯',(got-ok)+'題'],['正確率',acc+'%'],
-     ['得分',fs+'分']]
+  
+  // 應用「最低0分」限制
+  const finalScore=Math.max(0,rawScore);
+  const maxScore=tfCt+mcPts_all;
+  const acc=got?(mcOk*100/mcCt).toFixed(1):'0.0';
+  
+  // 構建結果顯示
+  const resultLines=[
+    ['科目',document.getElementById('subj').value],
+    ['年份',document.getElementById('yr').value],
+    ['總題數',tfCt+'題是非 + '+mcCt+'題選擇'],
+    ['已作答',got+'題'],
+    ['未作答',(tot-got)+'題 (不計分)'],
+  ];
+  
+  // 是非題詳情
+  if(tfCt>0){
+    resultLines.push(['是非題-答對',tfOk+'題 (得'+tfOk+'分)']);
+    resultLines.push(['是非題-答錯',tfErr+'題 (扣'+tfErr+'分)']);
+  }
+  
+  // 選擇題詳情
+  if(mcCt>0){
+    const mcErr=mcCt-mcOk;
+    const mcErrPts=mcErr>0?'(每題'+mcPts({subject:Q.find(q=>q.type==='選擇題').subject})+'分，共+0分)':'(+0分 不倒扣)';
+    resultLines.push(['選擇題-答對',mcOk+'題 (得'+(mcOk*mcPts(Q.find(q=>q.type==='選擇題'))||0)+'分 每題'+mcPts(Q.find(q=>q.type==='選擇題'))+'分)']);
+    resultLines.push(['選擇題-答錯',mcErr+'題 '+mcErrPts]);
+  }
+  
+  // 得分與正確率
+  resultLines.push(['原始得分',rawScore+'分']);
+  if(rawScore<0){
+    resultLines.push(['最終得分',finalScore+'分 (計算後取0)']);
+  }else{
+    resultLines.push(['最終得分',finalScore+'分 ／ 滿分 '+maxScore+'分']);
+  }
+  resultLines.push(['正確率',acc+'%']);
+  
+  document.getElementById('mr').innerHTML=resultLines
     .map(([k,v])=>'<div class="rr"><span>'+k+'</span><span class="rv">'+v+'</span></div>')
     .join('');
   document.getElementById('mo').classList.add('show');
