@@ -121,9 +121,10 @@ select:hover,button:hover{border-color:var(--acc);}
     <option value="person">人員</option>
     <option value="unit">單位</option>
     <option value="similar">類似</option>
+    <option value="outofscope">範圍外</option>
   </select></div>
   <div id="sb">
-    <span class="sp" id="ver" style="color:#7c6dfa">v2.7.1</span>
+    <span class="sp" id="ver" style="color:#7c6dfa">v2.7.4</span>
     <span class="sp" id="prof">熟練度 0%</span>
     <span class="sp" id="sum">0/0</span>
     <span class="sp" id="clk">00:00:00</span>
@@ -164,7 +165,7 @@ select:hover,button:hover{border-color:var(--acc);}
       • <code>note</code>：<code>"凡作答一律給分"</code> = 任何答案均給分<br>
       • <code>star</code>：初始熟練度，填 <code>0</code><br>
       • <code>appear</code>：【類似題標記】填入與本題相似的其他題目，格式為 <code>"年份-題號,年份-題號"</code>，例如 <code>"appear":"109-2,114-36"</code>。設定後，題型選「類似」時會篩選出這些題目。互相標記效果最佳（兩題都填對方）。<br><br>
-     ⚠️ 新增題目後，<b>先點「🗑 清除記錄」再重新整理頁面</b>，讓系統重新載入新題庫。</p>
+      ⚠️ 新增題目後，<b>先點「🗑 清除記錄」再重新整理頁面</b>，讓系統重新載入新題庫。</p>
     </div>
   </div>
 
@@ -577,6 +578,8 @@ function reload(){
     // 「類似」：用完整BANK建立appear對應表，再篩選當前d中符合的題目
     buildSimilarSet(BANK);
     d=d.filter(q=>inSimilarSet(q));
+  } else if(qt==='outofscope'){
+    d=d.filter(q=>q.note==='凡作答一律給分');
   } else if(qt!=='ALL'){
     d=d.filter(q=>matchQtype(q,qt));
   }
@@ -665,7 +668,8 @@ function show(){
   const q=Q[cur];
   document.getElementById('badge').textContent=
     q.subject+' '+q.year+'-'+q.id+' | '+q.type;
-  document.getElementById('qt').textContent='('+(cur+1)+') '+q.question;
+  const prefix = q.note==='凡作答一律給分' ? '*' : '';
+  document.getElementById('qt').textContent=prefix+'('+(cur+1)+') '+q.question;
   document.getElementById('note').textContent='';
   renderStars(q.star);
   const d=document.getElementById('opts'); d.innerHTML='';
@@ -720,6 +724,10 @@ function pick(v){
   const ok=q.note==='凡作答一律給分'||v===q.answer;
   if(q.note==='凡作答一律給分'){
     document.getElementById('note').textContent='✓ 此題一律給分';
+    // 範圍外題型：同批次首次作答也要加星星
+    if(!alreadyAnswered){
+      q.star=Math.min(10,(q.star||0)+1);
+    }
   } else if(!ok){
     let _al=q.answer;
     if(q.type==='是非題'){_al=q.answer==='O'?'○ 是':'✕ 否';}
